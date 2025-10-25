@@ -31,7 +31,11 @@ class Git
 
         $data = json_decode($response['body'], true);
         if (isset($data['content']) || $data['status'] == 404) {
-            return $data['sha'];
+            if (isset($data['sha'])) {
+                return $data['sha'];
+            } else {
+                return '';
+            }
         } else {
             die("Ошибка получения содержимого: " . $response);
         }
