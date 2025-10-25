@@ -1,0 +1,16 @@
+{
+    "name": "app/public",
+    "description": "Forms feedback",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/App"
+        }
+    },
+    "authors": [
+        {
+            "name": "MIXVBRC",
+            "email": "mixvbrc@gmail.com"
+        }
+    ],
+    "require": {}
+}
