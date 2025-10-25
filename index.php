@@ -1,6 +1,6 @@
 <?php require __DIR__ . '/vendor/autoload.php';
 
-$git = json_decode(file_get_contents(__DIR__ . '/git.json'));
+$git = json_decode(file_get_contents(__DIR__ . '/git.json'), true);
 
 if (!empty($git)) {
 
