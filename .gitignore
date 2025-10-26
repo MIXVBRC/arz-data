@@ -1,4 +1,5 @@
 .idea
-proxy.txt
-git.json
-data.json
+*.txt
+*.json
+!composer.json
+!data.json
