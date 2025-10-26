@@ -6,7 +6,7 @@ if (!empty($git)) {
 
     $proxyList = [];
 
-    $file = fopen('proxy.txt', 'r');
+    $file = fopen(__DIR__ . '/proxy.txt', 'r');
 
     if ($file) {
 
