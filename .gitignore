@@ -2,5 +2,4 @@
 *.txt
 *.json
 !composer.json
-!data.json
 !log.txt
