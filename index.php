@@ -1,19 +1,5 @@
 <?php require __DIR__ . '/vendor/autoload.php';
 
-/** < settings.json >
- * options      | array
- * - stop       | bool
- * api          | array
- * - ping       | string
- * - data       | string
- * git          | array
- * - token      | string
- * - owner      | string
- * - repo       | string
- * - branch     | string
- * - filename   | string
- */
-
 $settings = json_decode(file_get_contents(__DIR__ . '/settings.json'), true);
 
 if ($settings['options']['stop']) die;
