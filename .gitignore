@@ -3,3 +3,5 @@
 *.json
 !composer.json
 !data.json
+!log.txt
+dev.php

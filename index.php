@@ -1,61 +1,87 @@
 <?php require __DIR__ . '/vendor/autoload.php';
 
-$git = json_decode(file_get_contents(__DIR__ . '/git.json'), true);
+/** < settings.json >
+ * options      | array
+ * - stop       | bool
+ * api          | array
+ * - ping       | string
+ * - data       | string
+ * git          | array
+ * - token      | string
+ * - owner      | string
+ * - repo       | string
+ * - branch     | string
+ * - filename   | string
+ */
 
-if (!empty($git)) {
+$settings = json_decode(file_get_contents(__DIR__ . '/settings.json'), true);
 
-    $proxyList = [];
+if ($settings['options']['stop']) die;
 
-    $file = fopen(__DIR__ . '/proxy.txt', 'r');
+$proxyList = [];
 
-    if ($file) {
+$file = fopen(__DIR__ . '/proxy.txt', 'r');
 
-        while (($line = fgets($file)) !== false) {
+if ($file) {
 
-            $explode = explode(':', $line);
+    while (($line = fgets($file)) !== false) {
 
-            $ip = trim($explode[0]);
-            $port = trim($explode[1]);
+        $explode = explode(':', $line);
 
-            $proxyList[] = [
+        $ip = trim($explode[0]);
+        $port = trim($explode[1]);
 
-                'check' => App\Request::init()
-                    ->nobody(true)
-                    ->proxy($ip, (int) $port, 5)
-                    ->url('https://arz-market.moon.wh1teend.dev'),
+        $proxyList[] = [
 
-                'get' => App\Request::init()
-                    ->nobody(false)
-                    ->timeout(120)
-                    ->proxy($ip, (int) $port, 5)
-                    ->url('https://arz-market.moon.wh1teend.dev/api/getArizonaMarkets'),
+            'check' => App\Request::init()
+                ->nobody(true)
+                ->proxy($ip, (int) $port, 5)
+                ->url($settings['api']['ping']),
 
-            ];
-        }
+            'get' => App\Request::init()
+                ->nobody(false)
+                ->timeout(120)
+                ->proxy($ip, (int) $port, 5)
+                ->url($settings['api']['data']),
 
-        fclose($file);
+        ];
     }
 
-    shuffle($proxyList);
+    fclose($file);
+}
 
-    foreach ($proxyList as $proxy) {
+shuffle($proxyList);
 
-        $response = $proxy['check']->send();
+foreach ($proxyList as $proxy) {
+
+    $response = $proxy['check']->send();
+    if (empty($response['error'])) {
+
+        $response = $proxy['get']->send();
         if (empty($response['error'])) {
 
-            $response = $proxy['get']->send();
-            if (empty($response['error'])) {
+            if (!empty(response['body'])) {
 
-                App\Git::init($git['token'])->push(
-                    $git['owner'],
-                    $git['repo'],
-                    $git['branch'],
-                    $git['filename'],
-                    $response['body'],
-                );
+                $mb = ceil(strlen($response['body']) / 1024 / 1024 * 100) / 100;
 
-                break;
+                if ($mb > 1) {
+
+                    App\Git::init($settings['git']['token'])->push(
+                        $settings['git']['owner'],
+                        $settings['git']['repo'],
+                        $settings['git']['branch'],
+                        $settings['git']['filename'],
+                        $response['body'],
+                    );
+
+                } else {
+                    die("Response {$mb} Mb");
+                }
+
             }
+
+            break;
         }
     }
 }
+
