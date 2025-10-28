@@ -60,7 +60,7 @@ foreach ($proxyList as $proxy) {
         $response = $proxy['get']->send();
         if (empty($response['error'])) {
 
-            if (!empty(response['body'])) {
+            if (!empty($response['body'])) {
 
                 $mb = ceil(strlen($response['body']) / 1024 / 1024 * 100) / 100;
 
