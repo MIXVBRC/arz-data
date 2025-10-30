@@ -1,26 +1,109 @@
 <?php require __DIR__ . '/vendor/autoload.php';
 
-$names = file_get_contents(__DIR__ . '/names.json');
-$names = json_decode($names, true);
+try {
 
-$shops = file_get_contents(__DIR__ . '/data.json');
-$shops = json_decode($shops, true);
+    $settings = json_decode(file_get_contents(__DIR__ . '/settings.json'), true);
 
-$types = [
-    'items_sell',
-    'items_buy',
-];
+    if ($settings['options']['stop']) die;
 
-foreach ($shops as $indexShop => $shop) {
-    foreach ($types as $type) {
-        foreach ($shop[$type] as $indexItem => $itemName) {
-            if (preg_match("/^(\d+)\(.*\)$/", $itemName, $matches)) {
-                $shops[$indexShop][$type][$indexItem] = str_replace($matches[1], $names[$matches[1]], $matches[0]);
-            } else {
-                $shops[$indexShop][$type][$indexItem] = str_replace($itemName, $names[$itemName], $itemName);
+    $types = [
+        'items_sell',
+        'items_buy',
+    ];
+
+    $names = file_get_contents(__DIR__ . '/names.json');
+    $names = json_decode($names, true);
+
+    $api = $settings['options']['reserve'] ? $settings['reserve-api'] : $settings['api'];
+
+    $proxyList = [];
+
+    $file = fopen(__DIR__ . '/proxy.txt', 'r');
+
+    if ($file) {
+
+        while (($line = fgets($file)) !== false) {
+
+            $explode = explode(':', $line);
+
+            $ip = trim($explode[0]);
+            $port = trim($explode[1]);
+
+            $proxyList[] = [
+
+                'check' => App\Request::init()
+                    ->nobody(true)
+                    ->proxy($ip, (int) $port, 5)
+                    ->url($api['ping']),
+
+                'get' => App\Request::init()
+                    ->nobody(false)
+                    ->timeout(120)
+                    ->proxy($ip, (int) $port, 5)
+                    ->url($api['data']),
+
+            ];
+        }
+
+        fclose($file);
+    }
+
+    shuffle($proxyList);
+
+    foreach ($proxyList as $proxy) {
+
+        $response = $proxy['check']->send();
+
+        if (empty($response['error'])) {
+
+            $response = $proxy['get']->send();
+
+            if (empty($response['error'])) {
+
+                if (!empty($response['body'])) {
+
+                    $mb = ceil(strlen($response['body']) / 1024 / 1024 * 100) / 100;
+
+                    if ($mb > 0.1) {
+
+                        $shops = json_decode($response['body'], true);
+
+                        foreach ($shops as $indexShop => $shop) {
+                            foreach ($types as $type) {
+                                foreach ($shop[$type] as $indexItem => $itemName) {
+                                    if (preg_match("/^(\d+)\(.*\)$/", $itemName, $matches)) {
+                                        $itemName = str_replace($matches[1], $names[$matches[1]], $matches[0]);
+                                    } else {
+                                        $itemName = str_replace($itemName, $names[$itemName], $itemName);
+                                    }
+                                    $shops[$indexShop][$type][$indexItem] = $itemName;
+                                }
+                            }
+                        }
+
+                        $shops = json_encode($shops, JSON_UNESCAPED_UNICODE);
+
+                        App\Git::init($settings['git']['token'])->push(
+                            $settings['git']['owner'],
+                            $settings['git']['repo'],
+                            $settings['git']['branch'],
+                            $settings['git']['filename'],
+                            $shops,
+                        );
+
+                    } else {
+                        throw new Exception("Small amount of data was received: {$mb}Mb");
+                    }
+
+                }
+
+                break;
             }
         }
     }
-}
 
-\App\Pre::print($shops);
+} catch (Exception $exception) {
+
+    echo date("d.m.y H:i:s") . ' | ' . $exception->getMessage() . PHP_EOL;
+
+}

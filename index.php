@@ -12,6 +12,7 @@ try {
     ];
 
     $names = file_get_contents(__DIR__ . '/names.json');
+    $names = json_decode($names, true);
 
     $api = $settings['options']['reserve'] ? $settings['reserve-api'] : $settings['api'];
 
@@ -71,15 +72,16 @@ try {
                             foreach ($types as $type) {
                                 foreach ($shop[$type] as $indexItem => $itemName) {
                                     if (preg_match("/^(\d+)\(.*\)$/", $itemName, $matches)) {
-                                        $shops[$indexShop][$type][$indexItem] = str_replace($matches[1], $names[$matches[1]], $matches[0]);
+                                        $itemName = str_replace($matches[1], $names[$matches[1]], $matches[0]);
                                     } else {
-                                        $shops[$indexShop][$type][$indexItem] = str_replace($itemName, $names[$itemName], $itemName);
+                                        $itemName = str_replace($itemName, $names[$itemName], $itemName);
                                     }
+                                    $shops[$indexShop][$type][$indexItem] = $itemName;
                                 }
                             }
                         }
 
-                        $shops = json_encode($shops);
+                        $shops = json_encode($shops, JSON_UNESCAPED_UNICODE);
 
                         App\Git::init($settings['git']['token'])->push(
                             $settings['git']['owner'],
