@@ -6,7 +6,12 @@ try {
 
     if ($settings['options']['stop']) die;
 
-    $items = file_get_contents(__DIR__ . '/items.json');
+    $types = [
+        'items_sell',
+        'items_buy',
+    ];
+
+    $names = file_get_contents(__DIR__ . '/names.json');
 
     $api = $settings['options']['reserve'] ? $settings['reserve-api'] : $settings['api'];
 
@@ -59,6 +64,18 @@ try {
                     $mb = ceil(strlen($response['body']) / 1024 / 1024 * 100) / 100;
 
                     if ($mb > 0.1) {
+
+                        foreach ($response['body'] as $indexShop => $shop) {
+                            foreach ($types as $type) {
+                                foreach ($shop[$type] as $indexItem => $itemName) {
+                                    if (preg_match("/^(\d+)\(.*\)$/", $itemName, $matches)) {
+                                        $response['body'][$indexShop][$type][$indexItem] = str_replace($matches[1], $names[$matches[1]], $matches[0]);
+                                    } else {
+                                        $response['body'][$indexShop][$type][$indexItem] = str_replace($itemName, $names[$itemName], $itemName);
+                                    }
+                                }
+                            }
+                        }
 
                         App\Git::init($settings['git']['token'])->push(
                             $settings['git']['owner'],

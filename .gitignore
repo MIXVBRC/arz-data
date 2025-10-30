@@ -1,5 +1,5 @@
 .idea
 *.txt
 *.json
-!items.json
+!names.json
 !composer.json
