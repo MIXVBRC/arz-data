@@ -1,73 +1,86 @@
 <?php require __DIR__ . '/vendor/autoload.php';
 
-$settings = json_decode(file_get_contents(__DIR__ . '/settings.json'), true);
+try {
 
-if ($settings['options']['stop']) die;
+    $settings = json_decode(file_get_contents(__DIR__ . '/settings.json'), true);
 
-$proxyList = [];
+    if ($settings['options']['stop']) die;
 
-$file = fopen(__DIR__ . '/proxy.txt', 'r');
+    $items = file_get_contents(__DIR__ . '/items.json');
 
-if ($file) {
+    $api = $settings['options']['reserve'] ? $settings['reserve-api'] : $settings['api'];
 
-    while (($line = fgets($file)) !== false) {
+    $proxyList = [];
 
-        $explode = explode(':', $line);
+    $file = fopen(__DIR__ . '/proxy.txt', 'r');
 
-        $ip = trim($explode[0]);
-        $port = trim($explode[1]);
+    if ($file) {
 
-        $proxyList[] = [
+        while (($line = fgets($file)) !== false) {
 
-            'check' => App\Request::init()
-                ->nobody(true)
-                ->proxy($ip, (int) $port, 5)
-                ->url($settings['api']['ping']),
+            $explode = explode(':', $line);
 
-            'get' => App\Request::init()
-                ->nobody(false)
-                ->timeout(120)
-                ->proxy($ip, (int) $port, 5)
-                ->url($settings['api']['data']),
+            $ip = trim($explode[0]);
+            $port = trim($explode[1]);
 
-        ];
+            $proxyList[] = [
+
+                'check' => App\Request::init()
+                    ->nobody(true)
+                    ->proxy($ip, (int) $port, 5)
+                    ->url($api['ping']),
+
+                'get' => App\Request::init()
+                    ->nobody(false)
+                    ->timeout(120)
+                    ->proxy($ip, (int) $port, 5)
+                    ->url($api['data']),
+
+            ];
+        }
+
+        fclose($file);
     }
 
-    fclose($file);
-}
+    shuffle($proxyList);
 
-shuffle($proxyList);
+    foreach ($proxyList as $proxy) {
 
-foreach ($proxyList as $proxy) {
+        $response = $proxy['check']->send();
 
-    $response = $proxy['check']->send();
-    if (empty($response['error'])) {
-
-        $response = $proxy['get']->send();
         if (empty($response['error'])) {
 
-            if (!empty($response['body'])) {
+            $response = $proxy['get']->send();
 
-                $mb = ceil(strlen($response['body']) / 1024 / 1024 * 100) / 100;
+            if (empty($response['error'])) {
 
-                if ($mb > 1) {
+                if (!empty($response['body'])) {
 
-                    App\Git::init($settings['git']['token'])->push(
-                        $settings['git']['owner'],
-                        $settings['git']['repo'],
-                        $settings['git']['branch'],
-                        $settings['git']['filename'],
-                        $response['body'],
-                    );
+                    $mb = ceil(strlen($response['body']) / 1024 / 1024 * 100) / 100;
 
-                } else {
-                    die("Response {$mb} Mb");
+                    if ($mb > 0.1) {
+
+                        App\Git::init($settings['git']['token'])->push(
+                            $settings['git']['owner'],
+                            $settings['git']['repo'],
+                            $settings['git']['branch'],
+                            $settings['git']['filename'],
+                            $response['body'],
+                        );
+
+                    } else {
+                        throw new Exception("Small amount of data was received: {$mb}Mb");
+                    }
+
                 }
 
+                break;
             }
-
-            break;
         }
     }
-}
 
+} catch (Exception $exception) {
+
+    echo date("d.m.y H:i:s") . ' | ' . $exception->getMessage() . PHP_EOL;
+
+}

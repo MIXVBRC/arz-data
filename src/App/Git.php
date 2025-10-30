@@ -37,7 +37,7 @@ class Git
                 return '';
             }
         } else {
-            die("Ошибка получения содержимого: " . $response);
+            throw new \Exception('Error get response: ' . $response);
         }
     }
 
@@ -47,16 +47,16 @@ class Git
             CURLOPT_URL => "https://api.github.com/repos/$owner/$repo/contents/$filepath",
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_USERAGENT => 'PHP-cURL',
-            CURLOPT_CUSTOMREQUEST => "PUT",
+            CURLOPT_CUSTOMREQUEST => 'PUT',
             CURLOPT_POSTFIELDS => json_encode([
-                "message" => $message,
-                "content" => base64_encode($content),
-                "sha" => $this->getSha($owner, $repo, $branch, $filepath),
-                "branch" => $branch
+                'message' => $message,
+                'content' => base64_encode($content),
+                'sha' => $this->getSha($owner, $repo, $branch, $filepath),
+                'branch' => $branch
             ]),
             CURLOPT_HTTPHEADER => [
                 "Authorization: token $this->token",
-                "Content-Type: application/json"
+                'Content-Type: application/json'
             ],
         ])->send();
     }
