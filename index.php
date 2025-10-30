@@ -65,24 +65,28 @@ try {
 
                     if ($mb > 0.1) {
 
-                        foreach ($response['body'] as $indexShop => $shop) {
+                        $shops = json_decode($response['body'], true);
+
+                        foreach ($shops as $indexShop => $shop) {
                             foreach ($types as $type) {
                                 foreach ($shop[$type] as $indexItem => $itemName) {
                                     if (preg_match("/^(\d+)\(.*\)$/", $itemName, $matches)) {
-                                        $response['body'][$indexShop][$type][$indexItem] = str_replace($matches[1], $names[$matches[1]], $matches[0]);
+                                        $shops[$indexShop][$type][$indexItem] = str_replace($matches[1], $names[$matches[1]], $matches[0]);
                                     } else {
-                                        $response['body'][$indexShop][$type][$indexItem] = str_replace($itemName, $names[$itemName], $itemName);
+                                        $shops[$indexShop][$type][$indexItem] = str_replace($itemName, $names[$itemName], $itemName);
                                     }
                                 }
                             }
                         }
+
+                        $shops = json_encode($shops);
 
                         App\Git::init($settings['git']['token'])->push(
                             $settings['git']['owner'],
                             $settings['git']['repo'],
                             $settings['git']['branch'],
                             $settings['git']['filename'],
-                            $response['body'],
+                            $shops,
                         );
 
                     } else {
